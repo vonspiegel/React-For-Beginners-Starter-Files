@@ -3,13 +3,40 @@ import Header from './Header';
 import Order from './Order';
 import Inventory from './Inventory';
 import sampleFishes from '../sample-fishes';
-import Fish from './Fish'
+import Fish from './Fish';
+import base from '../base';
 
 class App extends React.Component {
   state = {
     fishes: {},
     order: {}
   };
+
+  componentDidMount() {
+    const { params } = this.props.match;
+    //first reinstate our localStorage
+    const localStorageRef = localStorage.getItem(params.storeId);
+    if (localStorageRef) {
+      this.setState({ order: JSON.parse(localStorageRef) })
+    }
+    this.ref = base.syncState(`${params.storeId}/fishes`, {
+      context: this,
+      state: 'fishes'
+    })
+  }
+
+  componentDidUpdate() {
+    console.log(this.state.order);
+    const { params } = this.props.match;
+    localStorage.setItem(
+      params.storeId, 
+      JSON.stringify(this.state.order)
+    );
+  }
+
+  componentWillUnmount() {
+    base.removeBinding(this.ref);
+  }
 
   addFish = fish => {
     const fishes = {...this.state.fishes};
@@ -18,6 +45,24 @@ class App extends React.Component {
       fishes: fishes
     });
   };
+
+  updateFish = (key, updatedFish) => {
+    //1. Take a copy of the current state
+    const fishes = { ...this.state.fishes };
+    //2. Update state
+    fishes[key] = updatedFish;
+    //3. Set that to state
+    this.setState({ fishes })
+  }
+
+  deleteFish = (key) => {
+    //1. Copy of state
+    const fishes = { ...this.state.fishes }
+    //2. Update the state
+    fishes[key] = null;
+    //3. Update state
+    this.setState({ fishes })
+  }
 
   loadSampleFishes = () => {
     this.setState({
@@ -32,6 +77,15 @@ class App extends React.Component {
     order[key] = order[key] + 1 || 1;
     //3. Call setState
     this.setState({ order });
+  }
+
+  removeFromOrder = key => {
+    //1. Take a cope of the state
+    const order = { ...this.state.order }
+    //2. Remove item from order
+    delete order[key];
+    //3. Update the state
+    this.setState({ order })
   }
 
   render() {
@@ -50,9 +104,18 @@ class App extends React.Component {
             ))}
           </ul>
         </div>
-        <Order fishes={this.state.fishes} order={this.state.order} />
-        <Inventory addFish={this.addFish} 
-       loadSampleFishes={this.loadSampleFishes} />
+        <Order
+          fishes={this.state.fishes}
+          order={this.state.order}
+          removeFromOrder={this.removeFromOrder}
+        />
+        <Inventory
+          addFish={this.addFish}
+          updateFish={this.updateFish}
+          deleteFish={this.deleteFish}
+          loadSampleFishes={this.loadSampleFishes} 
+          fishes={this.state.fishes}
+        />
       </div>
     )
   }
